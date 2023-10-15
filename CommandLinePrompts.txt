@@ -1,0 +1,337 @@
+Project 1:
+
+1. How many chromosomes are there in the genome?
+    $ grep '>' apple.genome | wc -l
+
+2. How many genes?
+    $ cut -f1 apple.genes | sort -u | wc -l
+
+3. How many transcript variants?
+    $ cut -f2 apple.genes | sort -u | wc -l
+
+4. How many genes have a single splice variant?
+    $ cut -f1 apple.genes | uniq -c | grep ' 1 ' | wc -l
+
+5. How may genes have 2 or more splice variants?
+    $ cut -f1 apple.genes | uniq -c | grep -v ' 1 ' | wc -l
+
+6. How many genes are there on the ‘+’ strand?
+    $ cut -f1,4 apple.genes | sort -u | grep '+' | wc -l
+
+7. How many genes are there on the ‘-’ strand?
+    $ cut -f1,4 apple.genes | sort -u | grep '-' | wc -l
+
+8. How many genes are there on chromosome chr1?
+    $ cut -f1,3 apple.genes | sort -u | grep 'chr1' | wc -l
+
+9. How many transcripts are there on chr1?
+    $ cut -f2,3 apple.genes | sort -u | grep 'chr1' | wc -l
+
+10. How many genes are in common between condition A and condition B?
+    $ cut -f1 apple.conditionA | sort -u > a.genes
+
+    $ cut -f1 apple.conditionB | sort -u > b.genes
+
+    $ cut -f1 apple.conditionC | sort -u > c.genes
+
+    $ comm -1 -2 a.genes b.genes | sort -u | wc -l
+
+11. How many genes are specific to condition A?
+    $ comm -2 -3 a.genes b.genes | sort -u | wc -l
+
+12. How many genes are in common to all three conditions?
+    $ comm -1 -2 a.genes b.genes > ab.genes
+
+    $ comm -1 -2 ab.genes c.genes | wc -l
+
+
+Project 2:
+
+Alignment Analysis:
+
+1. How many alignments does the set contain?
+   $ samtools view athal_wu_0_A.bam | wc -l
+
+2. How many alignments show the read's mate unmapped?
+   $ samtools view athal_wu_0_A.bam | cut -f7 | grep "*" | wc -l
+
+3. How many alignments contain a deletion (D)?
+   $ samtools view athal_wu_0_A.bam | cut -f6 | grep "D" | wc -l
+
+4. How many alignments show the read's mate mapped to the same chromosome?
+   $ samtools view athal_wu_0_A.bam | cut -f7 | grep "=" | wc -l
+
+5. How many alignments are spliced?
+   $ samtools view athal_wu_0_A.bam | cut -f6 | grep "N" | wc -l
+
+6. How many alignments does the set contain after sorting, indexing, and extracting a range?
+   # Sort the BAM file
+   $ samtools sort athal_wu_0_A.bam -o athal_wu_0_A.sort.bam
+
+   # Index the BAM file
+   $ samtools index athal_wu_0_A.sort.bam
+
+   # Extract range "Chr3:11,777,000-11,794,000"
+   $ samtools view athal_wu_0_A.sort.bam "Chr3:11,777,000-11,794,000" | wc -l
+
+7. How many alignments show the read's mate unmapped in the extracted range?
+   $ samtools view athal_wu_0_A.sort.bam "Chr3:11,777,000-11,794,000" | cut -f7 | grep "*" | wc -l
+
+8. How many alignments contain a deletion (D) in the extracted range?
+   $ samtools view athal_wu_0_A.sort.bam "Chr3:11,777,000-11,794,000" | cut -f6 | grep "D" | wc -l
+
+9. How many alignments show the read's mate mapped to the same chromosome in the extracted range?
+   $ samtools view athal_wu_0_A.sort.bam "Chr3:11,777,000-11,794,000" | cut -f7 | grep "=" | wc -l
+
+10. How many alignments are spliced in the extracted range?
+    $ samtools view athal_wu_0_A.sort.bam "Chr3:11,777,000-11,794,000" | cut -f6 | grep "N" | wc -l
+
+11. How many sequences are in the genome file?
+12. What is the length of the first sequence in the genome file?
+
+13. What alignment tool was used?
+    $ samtools view -H athal_wu_0_A.bam
+
+14. What is the read identifier (name) for the first alignment?
+    $ samtools view athal_wu_0_A.bam | head
+
+15. What is the start position of this read's mate on the genome? Give this as 'chrom:pos' if the read was mapped, or '*' if unmapped.
+
+16. How many overlaps (each overlap is reported on one line) are reported?
+    $ bedtools bamtobed -i athal_wu_0_A.bam > athal_wu_0_A.bed
+    $ bedtools intersect -wo -a athal_wu_0_A_annot.gtf -b athal_wu_0_A.bed | wc -l
+
+17. How many of these are 10 bases or longer?
+    $ bedtools intersect -wo -a athal_wu_0_A_annot.gtf -b athal_wu_0_A.bed | cut -f16 > count.txt
+    $ awk '$1>9{c++} END{print c+0}' count.txt
+
+18. How many alignments overlap the annotations?
+    $ wc -l count.txt
+
+19. Conversely, how many exons have reads mapped to them?
+    $ bedtools intersect -wo -a athal_wu_0_A_annot.gtf -b athal_wu_0_A.bed | cut -f4 | sort -u | wc -l
+
+20. If you were to convert the transcript annotations in the file "athal_wu_0_A_annot.gtf" into BED format, how many BED records would be generated?
+    $ bedtools intersect -wo -a athal_wu_0_A_annot.gtf -b athal_wu_0_A.bed | cut -f9 | cut -d " " -f4 | sort -u | wc -l
+
+Project #3:
+
+For this project, it is recommended that you use the VMBox virtual environment provided with the Course package and the tools therein. You may also use your system and software; ensure appropriate versions are installed: samtools v.1.2, bowtie v.2.2.5, and bcftools v.1.2.
+
+As part of the effort to catalog genetic variation in Arabidopsis thaliana (strain ‘wu_0_A’), you re-sequenced the genome to determine genetic variants. The sequencing reads are in 'wu_0_A_wgs.fastq', and the genome is 'wu_0.v7.fas'. Data source: 1001 Genomes Project ('Wu_0_A').
+
+Apply to questions 1 - 5:
+Generate a bowtie2 index of the 'wu_0_A' genome using bowtie2-build, with the prefix 'wu_0'.
+
+Apply to questions 6 - 14:
+Run bowtie2 to align reads to the genome, first for full-length matches and then for partial (local) matches, with default parameters.
+
+For questions 15 - 19:
+Convert the SAM file to BAM, then sort the BAM file. Compile candidate sites of variation using SAMtools mpileup, providing the reference fasta genome and using the option “-uv” to generate the output in uncompressed VCF format.
+
+For questions 20 - 24:
+Call variants using ‘BCFtools call’ with the multiallelic-caller model. Rerun SAMtools mpileup with the BCF output format option (‘-g’). In the BCFtools output, show only variant sites in uncompressed VCF format.
+
+1. How many sequences were in the genome?
+   $ cat wu_0.v7.fas | grep ">" | wc -l
+
+2. What was the name of the third sequence in the genome file? (name only, without the “>” sign)
+   $ cat wu_0.v7.fas | grep -A1 ">"
+
+3. What was the name of the last sequence in the genome file? (name only, without the “>” sign)
+   $ tac wu_0.v7.fas | grep -m 1 -o ">.*" | cut -c 2-
+
+4. How many index files did the operation create?
+   $ bowtie2-build wu_0.v7.fas wu_0/wu_0
+
+6. How many reads were in the original fastq file? (Divide the answer by 4 since there are 4 lines per read)
+   $ cat wu_0_A_wgs.fastq | wc -l
+
+7. How many matches (alignments) were reported for the original (full-match) setting, excluding lines with unmapped reads?
+9. How many reads were mapped in the scenario in Question 7?
+11. How many reads had multiple matches in the scenario in Question 7?
+   $ bowtie2 -p 4 -x wu_0/wu_0 wu_0_A_wgs.fastq -S wu_0.bt2.sam
+
+8. How many matches (alignments) were reported with the local-match setting, excluding lines with unmapped reads?
+10. How many reads were mapped in the scenario in Question 8?
+12. How many reads had multiple matches in the scenario in Question 8?
+   $ bowtie2 -p 4 --local -x wu_0/wu_0 wu_0_A_wgs.fastq -S wu_0.bt2.local.sam
+
+13. How many alignments contained insertions and/or deletions in the scenario in Question 7?
+14. How many alignments contained insertions and/or deletions in the scenario in Question 8?
+   $ cat wu_0.bt2.sam | cut -f6 | grep "I" | grep "D" | wc -l
+
+15. How many entries were reported for Chr3?
+   $ samtools view -bT wu_0.v7.fas wu_0.bt2.sam > wu_0.bt2.bam
+   $ samtools sort wu_0.bt2.bam -o wu_0.bt2.sorted.bam
+   $ samtools index wu_0.bt2.sorted.bam
+   $ samtools mpileup -uv -f wu_0.v7.fas wu_0.bt2.sorted.bam > wu_0.vcf
+
+16. How many entries have ‘A’ as the corresponding genome letter?
+17. How many entries have exactly 20 supporting reads (read depth)?
+18. How many entries represent indels?
+19. How many entries are reported for position 175672 on Chr1?
+20. How many variants are called on Chr3?
+21. How many variants represent an A->T SNP?
+22. How many entries are indels?
+23. How many entries have precisely 20 supporting reads (read depth)?
+24. What type of variant (i.e., SNP or INDEL) is called at position 11937923 on Chr3?
+
+(Follows the same answers as the first dataset just on the second dataset) 
+
+
+Project 4:
+
+For this project, it is recommended that you use the VMBox virtual environment provided with the Course package and the tools therein. You may also use your own system and software, however make sure that appropriate versions are installed. The answers are compatible with the following versions of the software: samtools v.1.2, bowtie2 v.2.2.2, tophat v.2.0.14, and cufflinks/ cuffmerge/ cuffcompare/ cuffdiff v.2.2.1. 
+You are performing an RNA-seq experiment to determine genes that are differentially expressed at different stages in the development of Arabidopsis thaliana shoot apical meristem. You collected samples at day 8 and day 16 (files “Day8.fastq” and “Day16.fastq”), extracted and sequenced the cellular mRNA, and are now set to perform the bioinformatics analysis. The reference genome you will need for the analysis is “athal_chr.fa” and the reference gene annotations are in “athal_genes.gtf”. Use default parameters unless otherwise specified. Sample command files that you can modify to create your own pipeline are provided in the file “commands.tar.gz”. All files are provided in the archive gencommand_proj4.tar.gz. 
+
+NOTE: The genome and annotation data were obtained and modified from the Arabidopsis Information Resources (TAIR) Database, and the RNA-seq reads were extracted from GenBank’s Short Read Archive (SRA). 
+
+Create a bowtie index of the genome using bowtie2-build, with the prefix ‘athal’. Include a copy of the reference genome with the name “athal.fa” in the index directory. 
+Apply to question 1-10. 
+
+Align both RNA-seq data sets to the reference genome using tophat. Analyze the results to answer the following questions. If multiple answers are required for one question, separate the answers with a space (e.g., 1000 2000).
+Apply to question 11-20. 
+
+Assemble the aligned RNA-seq reads into genes and transcripts using cufflinks. Use the labels ‘Day8’ and ‘Day16’, respectively, when creating identifiers. For this portion of the analysis, answer the following questions. 
+
+Apply to question 21-30. 
+
+Run cuffcompare on the resulting cufflinks transcripts, using the reference gene annotations provided and selecting the option '-R' to consider only the reference transcripts that overlap some input transfrag. For this step, using the *.tmap files answer the following, for both sets. 
+
+Apply to question 31-35. 
+
+Perform the differential gene expression analysis. For this, in a first stage run cuffmerge using the provided annotation to merge and reconcile the two sets of cufflinks transcripts. Make a note of the resulting file, ‘merged.gtf’. In a second step, use cufdiff to perform the differential expression analysis. 
+
+NOTE: Note that in general at least three replicates per condition are required to establish statistical significance. The single replicate example is provided here only to illustrate the analysis.
+
+1. How many alignments were produced for the ‘Day8’ RNA-seq data set?
+#create a shell script for Tophat
+    $ mkdir Tophat
+    $ mkdir Tophat/Day8
+    $ mkdir Tophat/Day16
+    $ mkdir athal
+    $ bowtie2-build athal.fa athal/athal
+    $ cp athal_chr.fa athal/
+    $ tophat -o Tophat/Day8/ athal/athal Day8.fastq
+    $ tophat -o Tophat/Day16 athal/athal Day16.fastq
+
+Use samtools to view from command line
+    $ samtools view Tophat/Day8/accepted_hits.bam | cut -f7 | wc -l
+
+2. How many alignments were produced for the ‘Day16’ RNA-seq data set?
+    $ samtools view Tophat/Day16/accepted_hits.bam | cut -f7 | wc -l
+
+3. How many reads were mapped in ‘Day8’ RNA-seq data set?
+    $ head Tophat/Day8/align_summary.txt
+
+4. How many reads were mapped in ‘Day16’ RNA-seq data set?
+    $ head Tophat/Day16/align_summary.txt
+
+5. How many reads were uniquely aligned in ‘Day8’ RNA-seq data set?
+6. How many reads were uniquely aligned in ‘Day16’ RNA-seq data set?
+
+7. How many spliced alignments were reported for ‘Day8’ RNA-seq data set?
+    $ samtools view Tophat/Day8/accepted_hits.bam | cut -f6 | grep "N" | wc -l
+
+8. How many spliced alignments were reported for ‘Day16’ RNA-seq data set?
+    $ samtools view Tophat/Day16/accepted_hits.bam | cut -f6 | grep "N" | wc -l
+
+9. How many reads were left unmapped from ‘Day8’ RNA-seq data set?
+
+10. How many reads were left unmapped from ‘Day16’ RNA-seq data set?
+
+11. How many genes were generated by cufflinks for Day8?
+    $ mkdir Cufflinks
+    $ mkdir Cufflinks/Day8
+    $ mkdir Cufflinks/Day16
+
+    $ cufflinks -L Day8 Tophat/Day8/accepted_hits.bam -o Cufflinks/Day8
+    $ cat Cufflinks/Day8/transcripts.gtf | cut -f9 | cut -d ";" -f1 | sort -u | wc -l
+
+12. How many genes were generated by cufflinks for Day16?
+    $ cufflinks -L Day16 Tophat/Day16/accepted_hits.bam -o Cufflinks/Day16
+    $ cat Cufflinks/Day16/transcripts.gtf | cut -f9 | cut -d ";" -f1 | sort -u | wc -l
+
+13. How many transcripts were reported for Day8?
+    $ cat Cufflinks/Day8/transcripts.gtf | cut -f9 | cut -d ";" -f2 | sort -u | wc -l
+
+14. How many transcripts were reported for Day16?
+    $ cat Cufflinks/Day16/transcripts.gtf | cut -f9 | cut -d ";" -f2 | sort -u | wc -l
+
+15. How many single transcript genes were produced for Day8?
+    $ cat Cufflinks/Day8/transcripts.gtf | cut -f9 | cut -d ' ' -f2,4 | sort -u | cut -d ' ' -f1 | sort | uniq -c |  grep -c " 1 "
+
+16. How many single transcript genes were produced for Day16?
+    $ cat Cufflinks/Day16/transcripts.gtf | cut -f9 | cut -d ' ' -f2,4 | sort -u | cut -d ' ' -f1 | sort | uniq -c |  grep -c " 1 "
+
+17. How many single-exon transcripts were in the Day8 set?
+    $ cat Cufflinks/Day8/transcripts.gtf | cut -f9 | cut -d ' ' -f4 | sort | uniq -c |  grep -c " 2 "
+
+18. How many single-exon transcripts were in the Day16 set?
+    $ cat Cufflinks/Day16/transcripts.gtf | cut -f9 | cut -d ' ' -f4 | sort | uniq -c |  grep -c " 2 "
+
+19. How many multi-exon transcripts were in the Day8 set?
+20. How many multi-exon transcripts were in the Day16 set?
+
+21. How many cufflinks transcripts fully reconstruct annotation transcripts in Day8?
+    $ cuffcompare >& cuffcompare.log
+    $ cd Cufflinks/Day8
+    $ cuffcompare -r ../../athal_genes.gtf -R transcripts.gtf
+    $ cat cuffcmp.transcripts.gtf.tmap | cut -f3 | grep "=" | wc -l
+
+22. How many cufflinks transcripts fully reconstruct annotation transcripts in Day16?
+    $ cd ../Day16
+    $ cuffcompare -r ../../athal_genes.gtf -R transcripts.gtf
+    $ cat cuffcmp.transcripts.gtf.tmap | cut -f3 | grep "=" | wc -l
+
+23. How many splice variants does the gene AT4G20240 have in the Day8 sample?
+    $ cd ../Day8
+    $ cat cuffcmp.transcripts.gtf.tmap | grep "AT4G20240" | wc -l
+
+24. How many splice variants does the gene AT4G20240 have in the Day16 sample?
+    $ cd ../Day16
+    $ cat cuffcmp.transcripts.gtf.tmap | grep "AT4G20240" | wc -l
+
+25. How many cufflinks transcripts are partial reconstructions of reference transcripts (‘contained’)? (Day8)
+    $ cd ../Day8
+    $ cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "c" | wc -l
+
+26. How many cufflinks transcripts are partial reconstructions of reference transcripts (‘contained’)? (Day16)
+    $ cd ../Day16
+    $ cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "c" | wc -l
+
+27. How many cufflinks transcripts are novel splice variants of reference genes? (Day8)
+    $ cd ../Day8
+    $ cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "j" | wc -l
+
+28. How many cufflinks transcripts are novel splice variants of reference genes? (Day16)
+    $ cd ../Day16
+    $ cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "j" | wc -l
+
+29. How many cufflinks transcripts were formed in the introns of reference genes? (Day8)
+    $ cd ../Day8
+    $ cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "i" | wc -l
+
+30. How many cufflinks transcripts were formed in the introns of reference genes? (Day16)
+    $ cd ../Day16
+    $ cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "i" | wc -l
+
+31. How many genes (loci) were reported in the merged.gtf file?
+    # rewrite the GTFs.txt with the location of gtf files which would like merged
+    $ cuffmerge -g athal_genes.gtf commands/GTFs.txt
+    $ cat merged_asm/merged.gtf | cut -f9 | cut -d ' ' -f2 | sort -u | wc -l
+
+32. How many transcripts?
+    $ cat merged_asm/merged.gtf | cut -f9 | cut -d ' ' -f4 | sort -u | wc -l
+
+33. How many genes total were included in the gene expression report from cuffdiff?
+    $ mkdir Cuffdiff
+    $ cuffdiff merged_asm/merged.gtf Tophat/Day8/accepted_hits.bam Tophat/Day16/accepted_hits.bam -o Cuffdiff
+    $ cat Cuffdiff/gene_exp.diff | wc -l
+        
+34. How many genes were detected as differentially expressed?
+    $ cat Cuffdiff/gene_exp.diff | cut -f14 | grep "yes" | wc -l
+
+35. How many transcripts were differentially expressed between the two samples?
+    $ cat Cuffdiff/isoform_exp.diff | cut -f14 | grep "yes" | wc -l
