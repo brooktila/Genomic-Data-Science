@@ -1,0 +1,599 @@
+#Libraries
+
+Packages for analysis from R and Bioconductor
+
+```{r}
+library(ballgown)
+library(Biobase)
+library(broom)
+library(DESeq2)
+library(devtools)
+library(GenomicRanges)
+library(goseq)
+library(limma)
+library(SummarizedExperiment)
+library(snpStats)
+library(sva)
+```
+
+
+```{r}
+#Install packages if the not installed using bioconductor
+BiocManager::install('')
+```
+
+
+# Module 1 Quiz
+
+Put the following code chunk at the top of an R markdown document called test.Rmd but set eval=TRUE
+```{r setup, eval=FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+```
+
+```{r }
+x = rnorm(10)
+plot(x,pch=19,col="dodgerblue")
+```
+
+```{r }
+y = rbinom(20,size=1,prob=0.5)
+table(y)
+```
+
+Create a summarizedExperiment object with the following code
+```{r}
+data(sample.ExpressionSet, package = "Biobase")
+se = makeSummarizedExperimentFromExpressionSet(sample.ExpressionSet)
+```
+
+Look up the help files for summarizedExperiment with the code summarizedExperiment. How do you access the genomic data for this object? How do you access the phenotype table? How do you access the feature data? What is the unique additional information provided by rowRanges(se)?
+
+```{r}
+??summarizedExperiment
+```
+
+Load the Bottomly and the Bodymap data sets with the following code:
+
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bottomly_eset.RData")
+load(file=con)
+close(con)
+bot = bottomly.eset
+pdata_bot=pData(bot)
+
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+pdata_bm=pData(bm)
+```
+Which of the following code chunks will make a heatmap of the 500 most highly expressed genes (as defined by total count), without re-ordering due to clustering? Are the highly expressed samples next to each other in sample order?
+
+```{r}
+row_sums = rowSums(edata)
+edata = edata[order(-row_sums),]
+index = 1:500
+heatmap(edata[index,],Rowv=NA,Colv=NA)
+```
+
+Load the Bodymap data using the following code:
+
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+pdata = pData(bm)
+edata = exprs(bm)
+```
+
+Make an MA-plot of the first sample versus the second sample using the log2 transform (hint: you may have to add 1 first) and the rlog transform from the DESeq2 package. How are the two MA-plots different? Which kind of genes appear most different in each plot?
+
+```{r}
+mm = log2(edata[,1]+1) - log2(edata[,2]+1)
+aa = log2(edata[,1]+1) + log2(edata[,2]+1)
+plot(aa,mm,col=2)
+```
+
+```{r}
+rld <- rlog(exprs(bm))
+y_rld = rld[,1] - rld[,2]
+x_rld = rld[,1] - rld[,2]
+plot(x_rld, y_rld, col = "blue", type = "p")
+```
+
+Load the Montgomery and Pickrell eSet:
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/montpick_eset.RData")
+load(file=con)
+close(con)
+mp = montpick.eset
+pdata=pData(mp)
+edata=as.data.frame(exprs(mp))
+fdata = fData(mp)
+```
+Cluster the data in three ways:
+
+I. With no changes to the data
+II. After filtering all genes with rowMeans less than 100
+III. After taking the log2 transform of the data without filtering Color the samples by which study they came from (Hint: consider using the function myplclust.R in the package rafalib available from CRAN and looking at the argument lab.col.)
+
+How do the methods compare in terms of how well they cluster the data by study? Why do you think that is?
+
+```{r}
+#I
+dist1 = dist(t(edata))
+hclust1 = hclust(dist1)
+par(mar=c(0, 4, 4, 2))
+plot(hclust1, hang = -1, main="origin", labels=FALSE)
+```
+
+
+```{r}
+#II
+low_genes = rowMeans(edata) < 100
+filter_edata = filter(edata, !low_genes)
+f_dist1 = dist(t(filter_edata))
+f_hclust1 = hclust(f_dist1)
+par(mar=c(0, 4, 4, 2))
+plot(f_hclust1, hang = -1, main="remove low expression", labels=FALSE)
+```
+
+
+```{r}
+# III
+log_edata = log2(edata + 1)
+l_dist1 = dist(t(log_edata))
+l_hclust1 = hclust(l_dist1)
+
+par(mar=c(0, 4, 4, 2))
+plot(l_hclust1, hang=-1, main="perform log2 transform", labels=FALSE)
+```
+
+
+Cluster the Montgomery and Pickrell eSet samples using k-means clustering after applying the log2 transform (be sure to add 1). Set a seed for reproducible results (use set.seed(1235)). If you choose two clusters, do you get the same two clusters as you get if you use the cutree function to cluster the samples into two groups? Which cluster matches most closely to the study labels?
+
+```{r}
+edata = log2(edata + 1)
+  
+set.seed(1235) 
+k2 = kmeans(edata,centers=2) # k-means clustering
+matplot(t(k2$centers),col=1:2,type="l",lwd=3)
+
+dist1 = dist(t(edata))
+hclust1 = hclust(dist1)
+tree = cutree(hclust1, 2)
+par(mar=c(0, 4, 4, 2))
+plot(hclust1, tree, main="cutree")
+```
+
+
+
+
+
+# Module 2 Quiz
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/montpick_eset.RData")
+load(file=con)
+close(con)
+mp = montpick.eset
+pdata=pData(mp)
+edata=as.data.frame(exprs(mp))
+fdata = fData(mp)
+```
+What percentage of variation is explained by the 1st principal component in the data set if you do:
+
+No transformation
+```{r}
+svd1<-svd(edata)
+ori_pca <-svd1$d^2/sum(svd1$d^2)
+ori_pca[1]
+```
+
+log2(data + 1) transformed
+
+```{r}
+edata_log2 <-log2(edata + 1)
+svd2 <- svd(edata_log2)
+log2_pca <-svd2$d^2/sum(svd2$d^2)
+log2_pca[1]
+```
+
+log2(data + 1) transform and subtract row means
+
+```{r}
+edata_centered <- edata_log2 - rowMeans(edata_log2)
+svd3 <-svd(edata_centered)
+log_centered <- svd3$d^2/sum(svd3$d^2)
+log_centered[1]
+```
+
+Perform the log2(data + 1) transform and subtract row means from the samples. Set the seed to 333 and use k-means to cluster the samples into two clusters. Use svd to calculate the singular vectors. What is the correlation between the first singular vector and the sample clustering indicator?
+
+```{r}
+set.seed(333)
+edata_kmeans <- kmeans(t(edata_centered), centers = 2)
+cor.test(svd3$v[,1], edata_kmeans$cluster)
+```
+
+Load the Bodymap data with the following command
+
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+edata = exprs(bm)
+pdata_bm=pData(bm)
+```
+
+Fit a linear model relating the first gene’s counts to the number of technical replicates, treating the number of replicates as a factor. Plot the data for this gene versus the covariate. Can you think of why this model might not fit well?
+
+```{r}
+lm_fit<- lm(edata[1,] ~ pdata_bm$num.tech.reps)
+
+plot(pdata_bm$num.tech.reps,edata[1,])
+abline(lm_fit$coeff[1], lm_fit$coeff[2], col=2, lwd=3)
+```
+
+Fit a linear model relating he first gene’s counts to the age of the person and the sex of the samples. What is the value and interpretation of the coefficient for age?
+
+```{r}
+
+lm_fit2<- lm(edata[1,] ~ pdata_bm$age + pdata_bm$gender)
+
+lm_fit2
+```
+
+Perform the log2(data + 1) transform. Then fit a regression model to each sample using population as the outcome. Do this using the 
+lm.fit function (hint: don't forget the intercept). What is the dimension of the residual matrix, the effects matrix and the coefficients matrix?
+
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/montpick_eset.RData")
+load(file=con)
+close(con)
+mp = montpick.eset
+pdata=pData(mp)
+edata=as.data.frame(exprs(mp))
+fdata = fData(mp)
+```
+
+```{r}
+edata_log2 <-log2(edata + 1)
+
+mod = model.matrix(~ pdata$population)
+fit = lm.fit(mod, t(edata_log2))
+
+dim(fit$residuals)
+dim(fit$effects)
+dim(fit$coefficients)
+
+fit$effects[,1]
+```
+
+Load the Bodymap data with the following command
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+edata = exprs(bm)
+pdata_bm=pData(bm)
+```
+
+Fit many regression models to the expression data where 
+age is the outcome variable using the lmFit function from the 
+limma package (hint: you may have to subset the expression data to the samples without missing values of age to get the model to fit). What is the coefficient for age for the 1,000th gene? Make a plot of the data and fitted values for this gene. Does the model fit well?
+
+```{r}
+pdata_bm = na.omit(pdata_bm)
+edata = edata[,rownames(pdata_bm), drop=FALSE]
+
+# fit many regression models to the expression data where age is the outcome
+mod_adj = model.matrix(~ pdata_bm$age)
+fit_limma = lmFit(edata,mod_adj)
+
+fit_limma$coefficients[1000,]
+
+intercept = fit_limma$coefficients[1000,][1]
+slope = fit_limma$coefficients[1000,][2]
+x = edata[1000,]*slope+intercept
+
+plot(x,pdata_bm$age)
+```
+Fit many regression models to the expression data where 
+age is the outcome variable and 
+tissue.type is an adjustment variable using the 
+lmFit function from the 
+limma package (hint: you may have to subset the expression data to the samples without missing values of age to get the model to fit). What is wrong with this model?
+
+```{r}
+mod_adj1 = model.matrix(~ pdata_bm$age, pdata_bm$tissue.type )
+fit_limma2 = lmFit(edata,mod_adj1)
+
+fit_limma2$coefficients[1000,]
+
+intercept = fit_limma2$coefficients[1000,][1]
+slope = fit_limma2$coefficients[1000,][2]
+x = edata[1000,]*slope+intercept
+
+plot(x,pdata_bm$tissue.type)
+```
+Set the seed using the command 
+set.seed(33353) then estimate a single surrogate variable using the 
+sva function after log2(data + 1) transforming the expression data, removing rows with rowMeans less than 1, and treating age as the outcome (hint: you may have to subset the expression data to the samples without missing values of age to get the model to fit). What is the correlation between the estimated surrogate for batch and age? Is the surrogate more highly correlated with 
+race or gender?
+
+```{r}
+set.seed(33353)
+pheno <- na.omit(pdata_bm)
+edata <- edata[,rownames(pheno), drop=FALSE]
+edata <- log2(edata + 1)
+edata <- edata[rowMeans(edata) > 1,]
+edata_log2 <-log2(edata + 1)
+mod1 <- model.matrix(~age, data=pheno)
+mod2 <- model.matrix(~1, data=pheno)
+
+sva <- sva(edata_log2, mod1, mod2, n.sv = 2)
+```
+```{r}
+cor(sva$sv, pheno$age)
+cor(sva$sv, as.numeric(pheno$race))
+cor(sva$sv, as.numeric(pheno$gender))
+```
+
+# Module 3 Quiz
+
+```{r}
+data(for.exercise)
+use <- seq(1, ncol(snps.10), 10)
+sub.10 <- snps.10[,use]
+snpdata = sub.10@.Data
+status = subject.support$cc
+```
+
+Fit a linear model and a logistic regression model to the data for the 3rd SNP. What are the coefficients for the SNP variable? How are they interpreted? (Hint: Don't forget to recode the 0 values to NA for the SNP data)
+
+```{r}
+# recode 0 values to NA
+snp3 = as.numeric(snpdata[,3])
+snp3[snp3==0] = NA
+
+# fit a linear model
+lm3 = lm(status ~ snp3)
+tidy(lm3)
+```
+
+```{r}
+# fit a logistic regression model
+glm3 = glm(status ~ snp3,family="binomial")
+tidy(glm3)
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+
+plot(status ~ snp3,pch=19)
+abline(lm3,col="darkgrey",lwd=5)
+plot(glm3$residuals)
+abline(glm3,col="darkgrey",lwd=5)
+```
+
+Fit a logistic regression model on a recessive (need 2 copies of minor allele to confer risk) and additive scale for the 10th SNP. Make a table of the fitted values versus the case/control status. Does one model fit better than the other?
+
+```{r}
+# fit a logistic regression model
+snp10 = as.numeric(snpdata[,10])
+snp10[snp10==0] = NA
+glm10 = glm(status ~ snp10, family="binomial")
+tidy(glm10)
+```
+
+```{r}
+snp10_dom = (snp10 == 2)
+glm10_dom = glm(status ~ snp10_dom, family="binomial")
+tidy(glm10_dom)
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+
+plot(status ~ snp3,pch=19)
+abline(glm10,col="darkgrey",lwd=5)
+plot(status ~ snp3,pch=19)
+abline(glm10_dom,col="darkgrey",lwd=5)
+```
+Fit an additive logistic regression model to each SNP. What is the average effect size? What is the max? What is the minimum?
+
+```{r}
+results = rep(NA, dim(snpdata)[2]) # fit an additive logistic regression model to each SNP
+for (i in 1:ncol(snpdata)){
+  snpdata_i = as.numeric(snpdata[,i])
+  snpdata_i[snpdata_i == 0] = NA
+  glm_i = glm(status ~ snpdata_i, family = "binomial")
+  results[i] = tidy(glm_i)$statistic[2]
+}
+# average effect size
+mean(results)
+min(results)
+max(results)
+```
+
+Fit an additive logistic regression model to each SNP and square the coefficients. What is the correlation with the results from using snp.rhs.tests snp.rhs.tests and chi.squared chi.squared? Why does this make sense?
+
+```{r}
+results_coeff_squre =  results^2
+# correlation with the results from using snp.rhs.tests and chi.squared
+glm_all = snp.rhs.tests(status ~ 1, snp.data = sub.10)
+cor(results_coeff_squre, chi.squared(glm_all))
+```
+
+Load the Montgomery and Pickrell eSet:
+
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/montpick_eset.RData")
+load(file=con)
+close(con)
+mp = montpick.eset
+pdata=pData(mp)
+edata=as.data.frame(exprs(mp))
+fdata = fData(mp)
+```
+
+Do the log2(data + 1) transform and fit calculate F-statistics for the difference between studies/populations using genefilter:rowFtests and using genefilter:rowttests. Do you get the same statistic? Do you get the same p-value?
+
+```{r}
+edata = log2(as.matrix(edata) + 1)
+# perform rowttests
+tstats_obj = rowttests(edata, as.factor(pdata$population))
+tidy(tstats_obj)
+```
+```{r}
+# perform rowFtests
+fstats_obj = rowFtests(edata, as.factor(pdata$population))
+tidy(fstats_obj)
+```
+
+```{r}
+par(mfrow=c(1,2))
+hist(tstats_obj$statistic, col=2)
+hist(fstats_obj$statistic, col=2)
+```
+First test for differences between the studies using the DESeq2 package using the 
+DESeq function. Then do the log2(data + 1) transform and do the test for differences between studies using the 
+limma package and the lmFit ebayes and 
+topTable functions. What is the correlation in the statistics between the two analyses? Are there more differences for the large statistics or the small statistics (hint: Make an MA-plot).
+
+```{r}
+BiocManager::install('DESeq2')
+```
+
+
+```{r}
+de = DESeqDataSetFromMatrix(edata, pdata, ~study)
+glm_de = DESeq(de) # using DESeq2 test the differences between the studies
+result_de = results(glm_de)
+
+edata = log2(as.matrix(edata) + 1)
+mod = model.matrix(~ as.factor(pdata$study))
+fit_limma = lmFit(edata, mod) # using limma test the differences
+ebayes_limma = eBayes(fit_limma) 
+top = topTable(ebayes_limma,number=dim(edata)[1], sort.by="none")
+
+cor(result_de$stat, top$t) # correlation in the statistics between two analyses
+# make an MA-plot
+y = cbind(result_de$stat, top$t)
+limma::plotMA(y)
+```
+
+
+Apply the Benjamni-Hochberg correction to the P-values from the two previous analyses. How many results are statistically significant at an FDR of 0.05 in each analysis? 
+
+```{r}
+# limma
+fp_bh = p.adjust(top$P.Value, method="BH")
+sum(fp_bh < 0.05)
+# DESeq
+fp_bh = p.adjust(result_de$pvalue, method="BH")
+sum(fp_bh < 0.05)
+```
+
+
+
+# Module 4 Quiz
+
+When performing gene set analysis it is critical to use the same annotation as was used in pre-processing steps. Read the paper behind the Bottomly data set on the ReCount database: http://www.ncbi.nlm.nih.gov/pubmed?term=21455293
+Using the paper and the function: supportedGenomes() in the goseq package can you figure out which of the Mouse genome builds they aligned the reads to.
+
+```{r}
+supportedGenomes()
+```
+ 
+ *UCSC mm9
+ 
+Load the Bottomly data with the following code and perform a differential expression analysis using limma with only the strain variable as an outcome. How many genes are differentially expressed at the 5% FDR level using Benjamini-Hochberg correction? What is the gene identifier of the first gene differentially expressed at this level (just in order, not the smallest FDR) ? (hint: the featureNames function may be useful)
+
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bottomly_eset.RData")
+load(file=con)
+close(con)
+bot = bottomly.eset
+pdata_bot=pData(bot)
+fdata_bot = featureData(bot)
+edata = exprs(bot)
+fdata_bot = fdata_bot[rowMeans(edata) > 5]
+edata = edata[rowMeans(edata) > 5, ]
+edata = log2(edata+1)
+```
+
+Differential Expression using limma
+```{r}
+mod = model.matrix(~ pdata_bot$strain)
+fit_limma = lmFit(edata, mod)
+ebayes_limma = eBayes(fit_limma)
+limma_pvals = topTable(ebayes_limma,number=dim(edata)[1], adjust.method ="BH", p.value=0.05, sort.by='none')
+
+limma_pvals[1,] #first gene
+dim(limma_pvals) #all genes that are DE at 5% FDR
+```
+
+Use the nullp and goseq functions in the goseq package to perform a gene ontology analysis. What is the top category that comes up as over represented? (hint: you will need to use the genome information on the genome from question 1 and the differential expression analysis from question 2.
+
+```{r}
+# limma fit with p-value less than 0.05
+limma_table = topTable(ebayes_limma,number=dim(edata)[1], adjust.method ="BH", sort.by='none')
+genes = as.integer(limma_table$adj.P.Val < 0.05)
+names(genes) = rownames(edata)
+not_na = !is.na(genes)
+genes = genes[not_na]
+
+# use nullp and goseq to perform a gene ontology analysis
+pwf = nullp(genes, "mm9", "ensGene")
+
+GO.wall = goseq(pwf, "mm9", "ensGene")
+GO.top10 = GO.wall[1:10,1]
+
+# top category
+GO.top10[1]
+
+```
+
+Look up the GO category that was the top category from the previous question. What is the name of the category?
+
+```{r}
+GO.wall$term[1]
+```
+
+Load the Bottomly data with the following code and perform a differential expression analysis using limma and treating strain as the outcome but adjusting for lane as a factor. Then find genes significant at the 5% FDR rate using the Benjamini Hochberg correction and perform the gene set analysis with goseq following the protocol from the first 4 questions. How many of the top 10 overrepresented categories are the same for the adjusted and unadjusted analysis?
+
+
+```{r}
+# perform a differential expression analysis using limma, adjusting for lane as a factor
+mod_adj = model.matrix(~ pdata_bot$strain + as.factor(pdata_bot$lane.number))
+fit_limma_adj = lmFit(edata,mod_adj)
+ebayes_limma_adj = eBayes(fit_limma_adj)
+
+# find genes significant at 5% FPR rate
+limma_table = topTable(ebayes_limma_adj, number=dim(edata)[1], adjust.method ="BH", sort.by='none')
+genes = as.integer(limma_table$adj.P.Val < 0.05)
+names(genes) = rownames(edata)
+not_na = !is.na(genes)
+genes = genes[not_na]
+
+pwf = nullp(genes, "mm9", "ensGene")
+
+GO.wall = goseq(pwf, "mm9", "ensGene")
+GO.top10_adj = GO.wall[1:10,1]
+
+# top 10 overrepresented categories are the same
+intersect(GO.top10, GO.top10_adj)
+```
+
+
+
+
+
+
+
